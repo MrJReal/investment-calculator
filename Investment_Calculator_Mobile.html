@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Investment Calculator (Mobile Ready)</title>
+<style>
+  :root{--bg:#0b1020;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--accent:#16a34a;--accent2:#60a5fa;--warn:#f59e0b;--border:#1f2937;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:linear-gradient(180deg,#080d1a,#0b1020);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+  header{text-align:center;padding:16px;}
+  h1{margin:0;font-size:1.4rem;}
+  .wrap{padding:14px;}
+  .card{background:var(--panel);border-radius:12px;padding:14px;border:1px solid var(--border);margin-bottom:14px;}
+  label{display:block;margin:6px 0 2px;color:var(--muted);font-size:.85rem;}
+  input{width:100%;padding:8px;border-radius:8px;background:#0b1020;color:var(--text);border:1px solid var(--border);}
+  button{margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--accent2);background:#0b1020;color:#fff;}
+  canvas{width:100%;height:300px;margin-top:10px;border:1px solid var(--border);border-radius:8px;}
+  table{width:100%;border-collapse:collapse;font-size:.8rem;}
+  th,td{border-bottom:1px solid #1f2937;padding:6px;text-align:right;}
+  th:first-child,td:first-child{text-align:left;}
+  .legend{display:flex;justify-content:center;gap:14px;margin-top:8px;font-size:.8rem;}
+  .swatch{width:12px;height:12px;border-radius:3px;display:inline-block;}
+</style>
+</head>
+<body>
+<header><h1>Investment Calculator</h1><p>Custom yearly returns + start year support</p></header>
+<div class="wrap">
+  <div class="card">
+    <label>Initial Investment ($)</label><input id="initial" type="number" value="20000">
+    <label>Monthly Contribution ($)</label><input id="monthly" type="number" value="500">
+    <label>Expected Annual Return (%)</label><input id="ret" type="number" value="13">
+    <label>Dividend Yield (%)</label><input id="div" type="number" value="1.35">
+    <label>Investment Duration (Years)</label><input id="years" type="number" value="20">
+    <label>Start Year (YYYY)</label><input id="startYear" type="number" value="2025">
+    <label>Inflation Rate (%)</label><input id="infl" type="number" value="3">
+    <label>Expense Ratio (%)</label><input id="fee" type="number" value="0.03">
+    <button id="calc">Calculate</button>
+  </div>
+  <div class="card">
+    <canvas id="chartLine"></canvas>
+    <canvas id="chartStack"></canvas>
+    <div class="legend">
+      <div><span class="swatch" style="background:#f59e0b"></span> Contributions</div>
+      <div><span class="swatch" style="background:#16a34a"></span> Growth</div>
+    </div>
+    <table id="tbl"><thead><tr><th>Year</th><th>Calendar</th><th>Start</th><th>Contrib</th><th>Divs</th><th>Growth</th><th>Fees</th><th>End</th><th>Real</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
+function calc(){
+  const init=parseFloat($('initial').value)||0, mon=parseFloat($('monthly').value)||0;
+  const yrs=parseInt($('years').value)||20, startY=parseInt($('startYear').value)||new Date().getFullYear();
+  const r=(parseFloat($('ret').value)||0)/100, d=(parseFloat($('div').value)||0)/100;
+  const i=(parseFloat($('infl').value)||0)/100, f=(parseFloat($('fee').value)||0)/100;
+  const fm=Math.pow(1-f,1/12)-1; let bal=init, rows=[];
+  for(let y=1;y<=yrs;y++){let s=bal,divY=0,gY=0,feeY=0,cY=0;
+    for(let m=0;m<12;m++){bal+=mon;cY+=mon;let dv=bal*(d/12);bal+=dv;divY+=dv;
+      let g=bal*(Math.pow(1+r,1/12)-1);bal+=g;gY+=g;let fe=Math.abs(bal*fm);bal-=fe;feeY+=fe;}
+    let e=bal,real=e/Math.pow(1+i,y);rows.push({y,cal:startY+y-1,s,c:cY,d:divY,g:gY,f:feeY,e,real});
+  }
+  const tb=$('tbl').querySelector('tbody');tb.innerHTML='';
+  rows.forEach(r=>{const tr=document.createElement('tr');
+    [r.y,r.cal,fmt(r.s),fmt(r.c),fmt(r.d),fmt(r.g),fmt(r.f),fmt(r.e),fmt(r.real)]
+    .forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});
+    tb.appendChild(tr);});
+  draw(rows);
+}
+function draw(rows){
+  const line=$('chartLine').getContext('2d'),stack=$('chartStack').getContext('2d');
+  const W=$('chartLine').width,H=$('chartLine').height;line.clearRect(0,0,W,H);stack.clearRect(0,0,W,H);
+  const pad=40,x=pad,y=10,w=W-pad*1.5,h=H-pad*1.8,max=Math.max(...rows.map(r=>r.e))*1.1;
+  line.strokeStyle='#60a5fa';line.beginPath();
+  rows.forEach((r,i)=>{let px=x+i*(w/(rows.length-1)),py=y+h-(r.e/max)*h;i?line.lineTo(px,py):line.moveTo(px,py);});
+  line.stroke();line.fillStyle='#9ca3af';line.font='10px system-ui';
+  rows.forEach((r,i)=>{if(i%2==0){let px=x+i*(w/(rows.length-1));line.fillText(r.cal,px-10,y+h+20);}});
+  let c1=0,c2=0;const bw=w/rows.length*0.8;
+  rows.forEach((r,i)=>{c1+=r.c;c2+=r.d+r.g-r.f;let bx=x+i*(w/rows.length),h1=(c1/max)*h,h2=(c2/max)*h;
+    stack.fillStyle='#f59e0b';stack.fillRect(bx,y+h-h1,bw,h1);
+    stack.fillStyle='#16a34a';stack.fillRect(bx,y+h-h1-h2,bw,h2);
+    if(i%2==0)stack.fillText(r.cal,bx,y+h+20);});
+}
+$('calc').onclick=calc;calc();
+</script>
+</body></html>
