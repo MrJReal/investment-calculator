@@ -3,85 +3,320 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Investment Calculator (Mobile Ready)</title>
+<title>Long-Term Investment Calculator + Yearly Breakdown (Custom Returns)</title>
 <style>
   :root{--bg:#0b1020;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--accent:#16a34a;--accent2:#60a5fa;--warn:#f59e0b;--border:#1f2937;}
-  *{box-sizing:border-box;}
-  body{margin:0;background:linear-gradient(180deg,#080d1a,#0b1020);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
-  header{text-align:center;padding:16px;}
-  h1{margin:0;font-size:1.4rem;}
-  .wrap{padding:14px;}
-  .card{background:var(--panel);border-radius:12px;padding:14px;border:1px solid var(--border);margin-bottom:14px;}
-  label{display:block;margin:6px 0 2px;color:var(--muted);font-size:.85rem;}
-  input{width:100%;padding:8px;border-radius:8px;background:#0b1020;color:var(--text);border:1px solid var(--border);}
-  button{margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--accent2);background:#0b1020;color:#fff;}
-  canvas{width:100%;height:300px;margin-top:10px;border:1px solid var(--border);border-radius:8px;}
-  table{width:100%;border-collapse:collapse;font-size:.8rem;}
-  th,td{border-bottom:1px solid #1f2937;padding:6px;text-align:right;}
-  th:first-child,td:first-child{text-align:left;}
-  .legend{display:flex;justify-content:center;gap:14px;margin-top:8px;font-size:.8rem;}
-  .swatch{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#080d1a,#0b1020);color:var(--text);
+       font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{padding:20px 14px;text-align:center} header h1{margin:0;font-size:1.6rem} header p{margin:6px 0 0;color:var(--muted)}
+  .wrap{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;padding:16px}
+  @media (max-width:1100px){.wrap{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#0d1332,var(--panel));border:1px solid var(--border);border-radius:12px;padding:16px;
+        box-shadow:0 18px 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03)}
+  h2{margin:0 0 10px;font-size:1.1rem}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:6px 0 6px}
+  input{width:100%;padding:10px 12px;border-radius:8px;background:#0b1020;color:var(--text);border:1px solid var(--border);outline:none}
+  input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media (max-width:560px){.grid{grid-template-columns:1fr}}
+  .actions{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
+  button{border:1px solid var(--border);background:#0b1020;color:#e5e7eb;padding:10px 12px;border-radius:8px;cursor:pointer}
+  button:hover{border-color:var(--accent2)} .primary{background:linear-gradient(180deg,#0f1a38,#0b1020);border-color:var(--accent2)}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px} @media (max-width:1000px){.summary{grid-template-columns:1fr}}
+  .kpi{padding:12px;border:1px solid var(--border);border-radius:10px;background:#0b1020}
+  .kpi .label{font-size:.8rem;color:var(--muted)} .kpi .value{font-size:1.1rem;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:8px}
+  thead th{position:sticky;top:0;background:#0b1223;color:#c7d2fe;border-bottom:1px solid var(--border);text-align:right;padding:8px}
+  thead th:first-child,tbody td:first-child{text-align:left} tbody td{padding:8px;border-bottom:1px dashed #16213c;text-align:right}
+  tbody tr:nth-child(odd) td{background:rgba(255,255,255,.02)} .note{color:var(--muted);font-size:.85rem;margin-top:8px}
+  .charts{display:grid;grid-template-columns:1fr;gap:12px;margin-top:8px}
+  canvas{width:100%;height:340px;background:#0b1020;border:1px solid var(--border);border-radius:10px}
+  .legend{display:flex;gap:14px;align-items:center;margin-top:6px;color:#c7d2fe;font-size:.9rem}
+  .key{display:inline-flex;align-items:center;gap:6px} .swatch{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid #1f2937}
+  .foot{text-align:center;color:var(--muted);padding:16px}
+  .mini{font-size:.8rem;color:var(--muted)}
+  .ovr{max-height:280px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+  .ovr table thead th{position:sticky;top:0}
 </style>
 </head>
 <body>
-<header><h1>Investment Calculator</h1><p>Custom yearly returns + start year support</p></header>
+<header>
+  <h1>Long-Term Calculator — Custom Returns by Year</h1>
+  <p>Use global rates or override any year below. Start year is used in the table and charts.</p>
+</header>
+
 <div class="wrap">
-  <div class="card">
-    <label>Initial Investment ($)</label><input id="initial" type="number" value="20000">
-    <label>Monthly Contribution ($)</label><input id="monthly" type="number" value="500">
-    <label>Expected Annual Return (%)</label><input id="ret" type="number" value="13">
-    <label>Dividend Yield (%)</label><input id="div" type="number" value="1.35">
-    <label>Investment Duration (Years)</label><input id="years" type="number" value="20">
-    <label>Start Year (YYYY)</label><input id="startYear" type="number" value="2025">
-    <label>Inflation Rate (%)</label><input id="infl" type="number" value="3">
-    <label>Expense Ratio (%)</label><input id="fee" type="number" value="0.03">
-    <button id="calc">Calculate</button>
-  </div>
-  <div class="card">
-    <canvas id="chartLine"></canvas>
-    <canvas id="chartStack"></canvas>
-    <div class="legend">
-      <div><span class="swatch" style="background:#f59e0b"></span> Contributions</div>
-      <div><span class="swatch" style="background:#16a34a"></span> Growth</div>
+  <section class="card">
+    <h2>Inputs</h2>
+    <div class="grid">
+      <div><label>Initial Investment ($)</label><input id="initial" type="number" value="20000" step="0.01"></div>
+      <div><label>Monthly Contribution ($)</label><input id="monthly" type="number" value="500" step="0.01"></div>
+      <div><label>Expected Annual Return (% — price)</label><input id="ret" type="number" value="13" step="0.01"></div>
+      <div><label>Dividend Yield (% per year)</label><input id="div" type="number" value="1.35" step="0.01"></div>
+      <div><label>Investment Duration (Years)</label><input id="years" type="number" value="20" min="1" max="60"></div>
+      <div><label>Start Year (YYYY)</label><input id="startYear" type="number" value="2025" min="1900" max="2300"></div>
+      <div><label>Annual Inflation Rate (%)</label><input id="infl" type="number" value="3" step="0.01"></div>
+      <div><label>Fund Expense Ratio (% per year)</label><input id="fee" type="number" value="0.03" step="0.001"></div>
     </div>
-    <table id="tbl"><thead><tr><th>Year</th><th>Calendar</th><th>Start</th><th>Contrib</th><th>Divs</th><th>Growth</th><th>Fees</th><th>End</th><th>Real</th></tr></thead><tbody></tbody></table>
-  </div>
+    <div class="actions">
+      <button class="primary" id="btnCalc">Calculate</button>
+      <button id="btnCSV">Download Yearly CSV</button>
+      <button id="btnRefresh">Refresh Custom Return Grid</button>
+    </div>
+    <p class="note">Assumptions: growth, dividends, and fees are applied monthly and dividends are reinvested. If a custom return is blank for a year, the global inputs are used.</p>
+
+    <h2 style="margin-top:14px;">Custom Returns (optional)</h2>
+    <div class="mini">Enter overrides by year (percent, e.g., 8 for 8%). Leave blank to use the global values above.</div>
+    <div class="ovr">
+      <table id="customTbl">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px">Year</th>
+            <th style="text-align:right;padding:8px">Price Return % (override)</th>
+            <th style="text-align:right;padding:8px">Dividend Yield % (override)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top:14px;">Summary</h2>
+    <div class="summary">
+      <div class="kpi"><div class="label">Total Value (Nominal)</div><div id="kTotal" class="value">$0</div></div>
+      <div class="kpi"><div class="label">Total Dividends Reinvested</div><div id="kDivs" class="value">$0</div></div>
+      <div class="kpi"><div class="label">Inflation-Adjusted Value</div><div id="kReal" class="value">$0</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Results</h2>
+    <div class="charts">
+      <canvas id="chartLine" width="1200" height="340"></canvas>
+      <div class="legend" id="legendLine"></div>
+      <canvas id="chartStack" width="1200" height="340"></canvas>
+      <div class="legend">
+        <span class="key"><span class="swatch" style="background:#f59e0b"></span>Contributions (cumulative)</span>
+        <span class="key"><span class="swatch" style="background:#16a34a"></span>Growth (dividends + price − fees)</span>
+      </div>
+    </div>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Calendar Year</th>
+          <th>Start Balance</th>
+          <th>Contrib This Year</th>
+          <th>Dividends</th>
+          <th>Price Growth</th>
+          <th>Fees</th>
+          <th>End Balance</th>
+          <th>End Balance (Real)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
 </div>
+
+<div class="foot">No external libraries. Save and use offline.</div>
+
 <script>
-const $=id=>document.getElementById(id);
-const fmt=n=>n.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
-function calc(){
-  const init=parseFloat($('initial').value)||0, mon=parseFloat($('monthly').value)||0;
-  const yrs=parseInt($('years').value)||20, startY=parseInt($('startYear').value)||new Date().getFullYear();
-  const r=(parseFloat($('ret').value)||0)/100, d=(parseFloat($('div').value)||0)/100;
-  const i=(parseFloat($('infl').value)||0)/100, f=(parseFloat($('fee').value)||0)/100;
-  const fm=Math.pow(1-f,1/12)-1; let bal=init, rows=[];
-  for(let y=1;y<=yrs;y++){let s=bal,divY=0,gY=0,feeY=0,cY=0;
-    for(let m=0;m<12;m++){bal+=mon;cY+=mon;let dv=bal*(d/12);bal+=dv;divY+=dv;
-      let g=bal*(Math.pow(1+r,1/12)-1);bal+=g;gY+=g;let fe=Math.abs(bal*fm);bal-=fe;feeY+=fe;}
-    let e=bal,real=e/Math.pow(1+i,y);rows.push({y,cal:startY+y-1,s,c:cY,d:divY,g:gY,f:feeY,e,real});
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const fmt = (n)=>n.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2});
+
+  function buildCustomGrid(){
+    const years = Math.max(1, Math.min(60, parseInt($('years').value||20,10)));
+    const start = parseInt($('startYear').value||new Date().getFullYear(),10);
+    const tb = $('customTbl').querySelector('tbody');
+    tb.innerHTML='';
+    for(let i=0;i<years;i++){
+      const yr = start+i;
+      const tr=document.createElement('tr');
+      const tdYear=document.createElement('td'); tdYear.style.textAlign='left'; tdYear.style.padding='6px 8px'; tdYear.textContent=String(yr);
+      const tdPrice=document.createElement('td'); tdPrice.style.textAlign='right'; tdPrice.style.padding='6px 8px';
+      const tdDiv=document.createElement('td'); tdDiv.style.textAlign='right'; tdDiv.style.padding='6px 8px';
+      const inPrice=document.createElement('input'); inPrice.type='number'; inPrice.step='0.01'; inPrice.style.width='120px';
+      const inDiv=document.createElement('input'); inDiv.type='number'; inDiv.step='0.01'; inDiv.style.width='120px';
+      tdPrice.appendChild(inPrice); tdDiv.appendChild(inDiv);
+      tr.appendChild(tdYear); tr.appendChild(tdPrice); tr.appendChild(tdDiv);
+      tb.appendChild(tr);
+    }
   }
-  const tb=$('tbl').querySelector('tbody');tb.innerHTML='';
-  rows.forEach(r=>{const tr=document.createElement('tr');
-    [r.y,r.cal,fmt(r.s),fmt(r.c),fmt(r.d),fmt(r.g),fmt(r.f),fmt(r.e),fmt(r.real)]
-    .forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});
-    tb.appendChild(tr);});
-  draw(rows);
-}
-function draw(rows){
-  const line=$('chartLine').getContext('2d'),stack=$('chartStack').getContext('2d');
-  const W=$('chartLine').width,H=$('chartLine').height;line.clearRect(0,0,W,H);stack.clearRect(0,0,W,H);
-  const pad=40,x=pad,y=10,w=W-pad*1.5,h=H-pad*1.8,max=Math.max(...rows.map(r=>r.e))*1.1;
-  line.strokeStyle='#60a5fa';line.beginPath();
-  rows.forEach((r,i)=>{let px=x+i*(w/(rows.length-1)),py=y+h-(r.e/max)*h;i?line.lineTo(px,py):line.moveTo(px,py);});
-  line.stroke();line.fillStyle='#9ca3af';line.font='10px system-ui';
-  rows.forEach((r,i)=>{if(i%2==0){let px=x+i*(w/(rows.length-1));line.fillText(r.cal,px-10,y+h+20);}});
-  let c1=0,c2=0;const bw=w/rows.length*0.8;
-  rows.forEach((r,i)=>{c1+=r.c;c2+=r.d+r.g-r.f;let bx=x+i*(w/rows.length),h1=(c1/max)*h,h2=(c2/max)*h;
-    stack.fillStyle='#f59e0b';stack.fillRect(bx,y+h-h1,bw,h1);
-    stack.fillStyle='#16a34a';stack.fillRect(bx,y+h-h1-h2,bw,h2);
-    if(i%2==0)stack.fillText(r.cal,bx,y+h+20);});
-}
-$('calc').onclick=calc;calc();
+
+  function getCustomOverrides(years){
+    const rows = Array.from($('customTbl').querySelector('tbody').children);
+    const price = [], div = [];
+    for(let i=0;i<years;i++){
+      const r = rows[i];
+      if(!r){ price.push(null); div.push(null); continue; }
+      const p = r.children[1].querySelector('input').value;
+      const d = r.children[2].querySelector('input').value;
+      price.push(p===''?null:parseFloat(p)/100);
+      div.push(d===''?null:parseFloat(d)/100);
+    }
+    return {price, div};
+  }
+
+  function chooseStep(n){ if(n<=15) return 1; if(n<=30) return 2; if(n<=50) return 5; return 10; }
+
+  function calc(){
+    const initial = parseFloat($('initial').value||0);
+    const monthly = parseFloat($('monthly').value||0);
+    const years = Math.max(1, Math.min(60, parseInt($('years').value||20,10)));
+    const startYear = parseInt($('startYear').value||new Date().getFullYear(),10);
+    const r_annual_global = (parseFloat($('ret').value||0))/100;
+    const d_annual_global = (parseFloat($('div').value||0))/100;
+    const infl_a = (parseFloat($('infl').value||0))/100;
+    const fee_a = (parseFloat($('fee').value||0))/100;
+
+    const fee_m = Math.pow(1-fee_a,1/12)-1; // negative
+    let bal = initial;
+
+    const overrides = getCustomOverrides(years);
+    const rows=[];
+    for(let y=1; y<=years; y++){
+      const calYear = startYear + (y-1);
+      const r_ann = overrides.price[y-1] ?? r_annual_global;
+      const d_ann = overrides.div[y-1] ?? d_annual_global;
+      const r_m = Math.pow(1+r_ann,1/12)-1;
+      const d_m = d_ann/12;
+
+      let start = bal;
+      let divY=0, growthY=0, feesY=0, contribY=0;
+
+      for(let m=1; m<=12; m++){
+        bal += monthly; contribY += monthly;
+        const div = bal * d_m; bal += div; divY += div;
+        const grow = bal * r_m; bal += grow; growthY += grow;
+        const f = Math.abs(bal * fee_m); bal -= f; feesY += f;
+      }
+
+      const end = bal;
+      const real = end / Math.pow(1+infl_a, y);
+      rows.push({y, calYear, start, contribY, divY, growthY, feesY, end, real});
+    }
+
+    // render table
+    const tbody = $('tbl').querySelector('tbody');
+    tbody.innerHTML='';
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      [r.y, r.calYear, fmt(r.start), fmt(r.contribY), fmt(r.divY), fmt(r.growthY), fmt(r.feesY), fmt(r.end), fmt(r.real)]
+        .forEach(v=>{const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);});
+      tbody.appendChild(tr);
+    });
+
+    // KPIs
+    const last = rows[rows.length-1];
+    const totalDivs = rows.reduce((s,r)=>s+r.divY,0);
+    $('kTotal').textContent = fmt(last.end);
+    $('kDivs').textContent = fmt(totalDivs);
+    $('kReal').textContent = fmt(last.real);
+
+    drawLine(rows);
+    drawStack(rows);
+    window._rows = rows; // for CSV export
+  }
+
+  function drawAxes(ctx, x, y, w, h){ ctx.strokeStyle='#1f2937'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h); }
+  function drawGridY(ctx, x, y, w, h, minY, maxY){
+    ctx.fillStyle='#9ca3af'; ctx.font='11px system-ui';
+    for(let t=0;t<=4;t++){
+      const val = (minY + (maxY-minY)*t/4);
+      const py = y + h - h*t/4;
+      ctx.fillText(val.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}), 6, py+4);
+      ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(x,py); ctx.lineTo(x+w,py); ctx.stroke();
+    }
+  }
+  function chooseStep(n){ if(n<=15) return 1; if(n<=30) return 2; if(n<=50) return 5; return 10; }
+
+  function drawLine(rows){
+    const c=$('chartLine'), ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    const pad=46, x=pad, y=10, w=c.width-pad*1.5, h=c.height-pad*1.8;
+    drawAxes(ctx,x,y,w,h);
+    const maxY = Math.max(...rows.map(r=>r.end)) * 1.05;
+    const minY = 0;
+    const stepX = w/(rows.length-1||1);
+
+    ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2; ctx.beginPath();
+    rows.forEach((r,i)=>{
+      const px = x + i*stepX;
+      const py = y + h - (r.end-minY)/(maxY-minY)*h;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+
+    drawGridY(ctx,x,y,w,h,minY,maxY);
+    ctx.fillStyle='#c7d2fe'; ctx.font='12px system-ui';
+    ctx.fillText('Total Value', x+8, y+16);
+    ctx.fillText('Year', x+w-24, y+h+28);
+    // x labels with calendar years
+    ctx.fillStyle='#9ca3af'; ctx.font='11px system-ui';
+    const step = chooseStep(rows.length);
+    rows.forEach((r,i)=>{
+      if((r.y-1) % step === 0 || r.y===rows.length){
+        const px = x + i*stepX;
+        ctx.fillText(String(r.calYear), px-12, y+h+16);
+        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.08)';
+        ctx.moveTo(px, y+h); ctx.lineTo(px, y); ctx.stroke();
+      }
+    });
+  }
+
+  function drawStack(rows){
+    const c=$('chartStack'), ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    const pad=46, x=pad, y=10, w=c.width-pad*1.5, h=c.height-pad*1.8;
+    drawAxes(ctx,x,y,w,h);
+
+    let cumContrib=0, cumGrowth=0;
+    const s1=[], s2=[];
+    rows.forEach((r)=>{ cumContrib += r.contribY; cumGrowth += (r.divY + r.growthY - r.feesY);
+      s1.push(cumContrib); s2.push(cumGrowth); });
+
+    const maxY = Math.max(...s1.map((v,i)=>v+s2[i]))*1.10;
+    const barW = Math.max(6, w/rows.length*0.7);
+    const gap = Math.max(2, w/rows.length*0.3);
+    const stepX = barW + gap;
+    const step = chooseStep(rows.length);
+
+    for(let i=0;i<rows.length;i++){ const baseX = x + i*stepX;
+      const h1 = (s1[i]/maxY)*h; const h2 = (s2[i]/maxY)*h;
+      ctx.fillStyle='#f59e0b'; ctx.fillRect(baseX, y+h-h1, barW, h1);
+      ctx.fillStyle='#16a34a'; ctx.fillRect(baseX, y+h-h1-h2, barW, h2);
+      const total = s1[i]+s2[i]; const labelY = y+h-h1-h2-4;
+      if(labelY > y+10){ ctx.fillStyle='#c7d2fe'; ctx.font='11px system-ui'; ctx.textAlign='center';
+        ctx.fillText(total.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}), baseX+barW/2, labelY); ctx.textAlign='start'; }
+      if((i+1-1) % step === 0 || i===rows.length-1){ ctx.fillStyle='#9ca3af'; ctx.font='11px system-ui';
+        ctx.fillText(String(rows[i].calYear), baseX+barW/2-14, y+h+16);
+        ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.moveTo(baseX+barW/2, y+h); ctx.lineTo(baseX+barW/2, y); ctx.stroke(); }
+    }
+
+    ctx.fillStyle='#c7d2fe'; ctx.font='12px system-ui';
+    ctx.fillText('Contributions vs Growth (cumulative)', x+8, y+16);
+    ctx.fillText('Year', x+w-24, y+h+28);
+  }
+
+  function toCSV(){ const rows = window._rows || [];
+    const header = ['Year','Calendar Year','Start Balance','Contrib This Year','Dividends','Price Growth','Fees','End Balance','End Balance (Real)'];
+    const csv=[header.join(',')];
+    rows.forEach(r=>csv.push([r.y,r.calYear,r.start,r.contribY,r.divY,r.growthY,r.feesY,r.end,r.real].join(',')));
+    const blob = new Blob([csv.join('\n')], {type:'text/csv'});
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='yearly_results.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  $('btnCalc').addEventListener('click', calc);
+  $('btnCSV').addEventListener('click', toCSV);
+  $('btnRefresh').addEventListener('click', buildCustomGrid);
+  $('years').addEventListener('change', buildCustomGrid);
+  $('startYear').addEventListener('change', buildCustomGrid);
+
+  buildCustomGrid();
+  calc();
+})();
 </script>
-</body></html>
+</body>
+</html>
